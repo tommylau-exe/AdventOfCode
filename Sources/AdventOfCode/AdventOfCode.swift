@@ -19,7 +19,7 @@ struct AdventOfCode: ParsableCommand {
     @Argument(help: "The part of the puzzle to run (e.g. 1 for part 1)")
     var part: Int
     
-    @Option(help: "The puzzle input file to use.")
+    @Argument(help: "The puzzle input file to use.")
     var input: String = "input"
     
     func run() throws {
@@ -32,13 +32,16 @@ struct AdventOfCode: ParsableCommand {
             throw Error.solutionNotFound
         }
         
-        let inputFilePath = ["Resources", String(year), String(day), input].joined(separator: "/")
-        let inputFileUrl = Bundle.module.url(forResource: inputFilePath, withExtension: "txt")
-        guard let inputFileUrl else {
+        let inputFile = Bundle.module.url(
+            forResource: ["Resources", String(year), String(day), input].joined(separator: "/"),
+            withExtension: "txt"
+        )
+        
+        guard let inputFile else {
             throw Error.inputFileNotFound
         }
         
-        let input = try String(contentsOf: inputFileUrl)
+        let input = try String(contentsOf: inputFile)
         print(solution(input))
     }
 }
