@@ -7,6 +7,7 @@
 
 import Algorithms
 import Foundation
+import RegexBuilder
 
 extension Year2023 {
     enum Day3 {}
@@ -39,7 +40,7 @@ extension Year2023.Day3 {
         
         let gears = schematic.enumerated()
             .flatMap { row, line in
-                line.matches(of: /\*/)
+                line.matches(of: "*")
                     .map { match in line.distance(from: line.startIndex, to: match.startIndex) }
                     .map { column in Location(row: row, column: column) }
             }
@@ -61,16 +62,16 @@ private extension Schematic {
     func partNumbers() -> [PartNumber] {
         enumerated()
             .flatMap { row, line in
-                line.matches(of: /\d+/)
+                line.matches(of: OneOrMore(.digit))
                     .map { match in
-                        let lowerBound = line.distance(from: line.startIndex, to: match.startIndex)
-                        let upperBound = line.distance(from: line.startIndex, to: match.endIndex)
+                        let firstColumn = line.distance(from: line.startIndex, to: match.startIndex)
+                        let lastColumn = line.distance(from: line.startIndex, to: match.endIndex)
                         
                         return PartNumber(
                             value: Int(match.output)!,
                             location: PartNumber.Location(
                                 row: row,
-                                range: lowerBound..<upperBound
+                                columns: firstColumn..<lastColumn
                             )
                         )
                     }
@@ -90,13 +91,13 @@ private struct PartNumber: Hashable {
     
     struct Location: Hashable {
         var row: Int
-        var range: Range<Int>
+        var columns: Range<Int>
     }
 }
 
 private extension PartNumber.Location {
     var discreteLocations: [Location] {
-        range.map { Location(row: row, column: $0) }
+        columns.map { Location(row: row, column: $0) }
     }
     
     func neighbors(in schematic: Schematic) -> [Location] {
