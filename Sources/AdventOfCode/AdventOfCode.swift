@@ -40,6 +40,10 @@ struct AdventOfCode: ParsableCommand {
             Year2023.Day2.part1
         case (2023, 2, 2):
             Year2023.Day2.part2
+        case (2023, 3, 1):
+            Year2023.Day3.part1
+        case (2023, 3, 2):
+            Year2023.Day3.part2
         default:
             throw Error.solutionNotFound
         }
