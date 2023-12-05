@@ -9,7 +9,7 @@ import ArgumentParser
 import Foundation
 
 @main
-struct AdventOfCode: ParsableCommand {
+struct AdventOfCode: AsyncParsableCommand {
     @Argument(help: "The year of the puzzle to run (e.g. 2023)")
     var year: Int
     
@@ -22,7 +22,7 @@ struct AdventOfCode: ParsableCommand {
     @Argument(help: "The puzzle input file to use.")
     var input: String = "input"
     
-    func run() throws {
+    func run() async throws {
         let solution = switch (year, day, part) {
         case (2022, 1, 1):
             Year2022.Day1.part1
@@ -48,6 +48,14 @@ struct AdventOfCode: ParsableCommand {
             Year2023.Day4.part1
         case (2023, 4, 2):
             Year2023.Day4.part2
+        case (2023, 5, 1):
+            Year2023.Day5.part1
+        case (2023, 5, 2):
+            Year2023.Day5.part2
+        case (2023, 6, 1):
+            Year2023.Day6.part1
+        case (2023, 6, 2):
+            Year2023.Day6.part2
         default:
             throw Error.solutionNotFound
         }
@@ -62,7 +70,15 @@ struct AdventOfCode: ParsableCommand {
         }
         
         let input = try String(contentsOf: inputFile)
-        print(solution(input))
+        let startTime = Date.now
+        
+        print(await solution(input))
+        
+        let computeTime = Measurement<UnitDuration>(
+            value: Date.now.timeIntervalSince(startTime),
+            unit: .seconds
+        )
+        print("Finished in \(computeTime.formatted())")
     }
 }
 
