@@ -5,6 +5,7 @@
 //  Created by Tom Lauerman on 12/4/23.
 //
 
+import Algorithms
 import Foundation
 import RegexBuilder
 
@@ -25,8 +26,30 @@ extension Year2023.Day5 {
             .min()!
     }
     
-    static func part2(input: String) -> Int {
-        return 0
+    // This brute force solution took about 3 hours and 20 minutes on my M2 Max. I'm aware that there
+    // are much better (faster) solutions, but it took me more than 3 hours and 20 minutes to try and
+    // figure that out. So this is good enough ✅
+    static func part2(input: String) async -> Int {
+        let seedsAndAlmanac = input.split(separator: Repeat(.newlineSequence, count: 2), maxSplits: 1)
+        let seedGroups = seedsAndAlmanac.first!.matches(of: OneOrMore(.digit))
+            .map(\.output)
+            .map { Int($0)! }
+            .chunks(ofCount: 2)
+            .map { ($0.first!, $0.last!) }
+            .map { $0...($0 + $1) }
+        let almanac = Almanac.from(seedsAndAlmanac.last!)
+        
+        return await withTaskGroup(of: Int.self, returning: Int.self) { group in
+            // Get the local minimum of each group of seeds in parallel
+            seedGroups.forEach { seeds in
+                group.addTask {
+                    seeds.lazy.map(almanac.location(for:)).min()!
+                }
+            }
+            
+            // Get the absolute minimum
+            return await group.min()!
+        }
     }
 }
 
