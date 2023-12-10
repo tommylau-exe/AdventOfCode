@@ -30,18 +30,27 @@ extension Year2023.Day10 {
     }
     
     static func part2(input: String) -> Int {
-        let map = Map(content: input.split(whereSeparator: \.isNewline).map(Array.init)).removeJunk()
-        let emptyPoints = map.allPoints.filter { map.content[$0.y][$0.x] == "." }
-        let borderPoints = map.allPoints.filter { $0.isOnBorder(of: map) }
+        let originalMap = Map(content: input.split(whereSeparator: \.isNewline).map(Array.init)).removeJunk()
+        let scaledMap = originalMap.replaceStart().upscale()
         
-        var innerOuterMap: [Map.Point: Bool] = [:]
-        var pointsToSearch = borderPoints
-        while !pointsToSearch.isEmpty {
-            let point = pointsToSearch.removeFirst()
+        var outerPoints = Set<Map.Point>()
+        var pointsToCheck = scaledMap.allPoints.filter { $0.isOnBorder(of: scaledMap) }
+        while !pointsToCheck.isEmpty {
+            let point = pointsToCheck.removeFirst()
+            guard !outerPoints.contains(point) else { continue }
             
-            if point.isOnBorder(of: map) || map.emptyNeighbors(of: point).contains(where: {})
+            let neighbors = scaledMap.neighbors(for: point)
+            if point.isOnBorder(of: scaledMap) || !outerPoints.intersection(neighbors).isEmpty {
+                outerPoints.insert(point)
+            }
+            
+            pointsToCheck += neighbors
         }
-        fatalError()
+        
+        return originalMap.allPoints
+            .filter { originalMap.content[$0.y][$0.x] == "." }
+            .filter { !outerPoints.contains(Map.Point(x: 3*$0.x + 1, y: 3*$0.y + 1)) }
+            .count
     }
 }
 
@@ -61,9 +70,9 @@ private struct Map {
     }
     
     var startingPoint: Point {
-        product(0..<width, 0..<height)
-            .map { x, y in (Point(x: x, y: y), content[y][x]) }
-            .first(where: { point, character in character == "S" })!
+        allPoints
+            .map { point in (point, content[point.y][point.x]) }
+            .first { _, character in character == "S" }!
             .0
     }
     
@@ -79,8 +88,7 @@ private struct Map {
         case "J": [.north, .west]
         case "7": [.south, .west]
         case "F": [.south, .east]
-        case "S": [.north, .south, .east, .west]
-        default: []
+        default: [.north, .south, .east, .west]
         }
     }
     
@@ -98,25 +106,129 @@ private struct Map {
     }
     
     func neighbors(for point: Point) -> [Point] {
-        validDirections(from: point)
+        let neighbors = validDirections(from: point)
             .map { dir in (dir, go(dir, from: point)) }
             .filter { _, point in contains(point) }
             .filter { dir, point in validDirections(from: point).contains(where: { $0 == dir.opposite}) }
             .map { _, point in point }
+        
+        guard content[point.y][point.x] != "S" else {
+            return neighbors.filter { point in content[point.y][point.x] != "." }
+        }
+        
+        guard content[point.y][point.x] != "." else {
+            return neighbors.filter { point in content[point.y][point.x] != "S" }
+        }
+        
+        return neighbors
     }
     
     func removeJunk() -> Map {
-        let junkPoints = Set(allPoints.filter { neighbors(for: $0).isEmpty })
-        let cleanContent = allPoints.map { junkPoints.contains($0) ? content[$0.y][$0.x] : "." }
+        var loopPoints = Set<Point>()
+        var pointsToExplore = [startingPoint]
+        while !pointsToExplore.isEmpty {
+            let point = pointsToExplore.removeFirst()
+            guard !loopPoints.contains(point) else { continue }
+            
+            loopPoints.insert(point)
+            pointsToExplore += neighbors(for: point)
+        }
         
-        return Map(content: Array(cleanContent.chunks(ofCount: width)).map(Array.init))
+        var cleanContent = content
+        for junkPoint in loopPoints.symmetricDifference(allPoints) {
+            cleanContent[junkPoint.y][junkPoint.x] = "."
+        }
+        
+        return Map(content: cleanContent)
     }
     
-    func emptyNeighbors(of point: Point) -> [Point] {
-        Direction.allCases
-            .map { go($0, from: point) }
-            .filter(contains)
-            .filter { point in content[point.y][point.x] == "." }
+    func replaceStart() -> Map {
+        let startingPoint = startingPoint
+        let directions = validDirections(from: startingPoint)
+            .map { dir in (dir, go(dir, from: startingPoint)) }
+            .filter { _, point in contains(point) }
+            .filter { dir, point in validDirections(from: point).contains(where: { $0 == dir.opposite}) }
+            .map { dir, _ in dir }
+        
+        let replacement: Character = switch Set(directions) {
+        case [.north, .south]: "|"
+        case [.east,  .west]:  "-"
+        case [.north, .east]:  "L"
+        case [.north, .west]:  "J"
+        case [.south, .west]:  "7"
+        case [.south, .east]:  "F"
+        default: fatalError()
+        }
+        
+        var newContent = content
+        newContent[startingPoint.y][startingPoint.x] = replacement
+        
+        return Map(content: newContent)
+    }
+    
+    func upscale(_ character: Character) -> [[Character]] {
+        switch character {
+        case "|":
+            [
+                [".","|","."],
+                [".","|","."],
+                [".","|","."],
+            ]
+        case "-":
+            [
+                [".",".","."],
+                ["-","-","-"],
+                [".",".","."],
+            ]
+        case "L":
+            [
+                [".","|","."],
+                [".","L","-"],
+                [".",".","."],
+            ]
+        case "J":
+            [
+                [".","|","."],
+                ["-","J","."],
+                [".",".","."],
+            ]
+        case "7":
+            [
+                [".",".","."],
+                ["-","7","."],
+                [".","|","."],
+            ]
+        case "F":
+            [
+                [".",".","."],
+                [".","F","-"],
+                [".","|","."],
+            ]
+        default:
+            [
+                [".",".","."],
+                [".",".","."],
+                [".",".","."],
+            ]
+        }
+    }
+    
+    func upscale() -> Map {
+        var newContent = Array(repeating: Array(repeating: "." as Character, count: width * 3), count: height * 3)
+        for y in content.indices {
+            for x in content[y].indices {
+                let upscaled = upscale(content[y][x])
+                for dy in upscaled.indices {
+                    for dx in upscaled[dy].indices {
+                        let nx = 3*x + dx
+                        let ny = 3*y + dy
+                        newContent[ny][nx] = upscaled[dy][dx]
+                    }
+                }
+            }
+        }
+        
+        return Map(content: newContent)
     }
 }
 
@@ -132,7 +244,7 @@ private extension Map {
 }
 
 private extension Map {
-    enum Direction: CaseIterable {
+    enum Direction {
         case north
         case south
         case east
