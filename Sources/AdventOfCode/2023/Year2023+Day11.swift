@@ -13,20 +13,20 @@ extension Year2023 {
 
 extension Year2023.Day11 {
     static func part1(input: String) -> Int {
-        let universe = Universe(content: input.split(whereSeparator: \.isNewline).map(Array.init)).expanded()
-        let galaxies = universe.galaxies
+        let universe = Universe(content: input.split(whereSeparator: \.isNewline).map(Array.init))
         
-        return galaxies.combinations(ofCount: 2)
+        return universe.galaxies(withScaleFactor: 2)
+            .combinations(ofCount: 2)
             .map { ($0.first!, $0.last!) }
             .map { $0.distance(to: $1) }
             .reduce(0, +)
     }
     
     static func part2(input: String) -> Int {
-        let universe = Universe(content: input.split(whereSeparator: \.isNewline).map(Array.init)).expanded()
-        let galaxies = universe.galaxies
+        let universe = Universe(content: input.split(whereSeparator: \.isNewline).map(Array.init))
         
-        return galaxies.combinations(ofCount: 2)
+        return universe.galaxies(withScaleFactor: 1_000_000)
+            .combinations(ofCount: 2)
             .map { ($0.first!, $0.last!) }
             .map { $0.distance(to: $1) }
             .reduce(0, +)
@@ -36,35 +36,35 @@ extension Year2023.Day11 {
 private struct Universe {
     let content: [[Character]]
     
-    var galaxies: [Point] {
+    func scale(_ point: Point, by scaleFactor: Int) -> Point {
+        var emptyRows = 0
+        for rowNumber in 0..<point.y {
+            let row = content[rowNumber]
+            if row.allSatisfy({ $0 == "." }) {
+                emptyRows += 1
+            }
+        }
+        
+        var emptyColumns = 0
+        for columnNumber in 0..<point.x {
+            let column = content.map { $0[columnNumber] }
+            if column.allSatisfy({ $0 == "." }) {
+                emptyColumns += 1
+            }
+        }
+        
+        return Point(x: point.x + emptyColumns * (scaleFactor-1), y: point.y + emptyRows * (scaleFactor-1))
+    }
+    
+    func galaxies(withScaleFactor scaleFactor: Int) -> [Point] {
         var points: [Point] = []
         for x in content.first!.indices {
             for y in content.indices where content[y][x] == "#" {
-                points.append(Point(x: x, y: y))
+                points.append(scale(Point(x: x, y: y), by: scaleFactor))
             }
         }
         
         return points
-    }
-    
-    func expanded() -> Universe {
-        var newContent = content
-        
-        for (rowNumber, row) in newContent.enumerated().reversed() where row.allSatisfy({ $0 == "." }) {
-            // Insert duplicate row (empty row) at the same index
-            newContent.insert(row, at: rowNumber)
-        }
-        
-        for columnNumber in newContent.first!.indices.reversed() {
-            let column = newContent.map { $0[columnNumber] }
-            guard column.allSatisfy({ $0 == "." }) else { continue }
-            
-            for rowNumber in newContent.indices {
-                newContent[rowNumber].insert(".", at: columnNumber)
-            }
-        }
-        
-        return Universe(content: newContent)
     }
 }
 
